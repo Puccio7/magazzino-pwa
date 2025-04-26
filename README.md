@@ -1,3 +1,4 @@
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -52,3 +53,5 @@ export default tseslint.config({
   },
 })
 ```
+# magazzino-pwa
+7cb2102ce67fd96260803515b94b0a1f69105bf2

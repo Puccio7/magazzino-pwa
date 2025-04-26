@@ -1,7 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-const Magazzino = () => {
+const Magazzino = ({ logout }: { logout: () => void }) => {
   const [prodotti, setProdotti] = useState<any[]>([]);
 
   const handleAggiungiProdotto = async (e: React.FormEvent) => {
@@ -28,39 +28,38 @@ const Magazzino = () => {
   };
 
   return (
-    <div>
-      <h1>Gestione Magazzino</h1>
-      <form onSubmit={handleAggiungiProdotto}>
-        <input type="text" name="nome" placeholder="Nome prodotto" required />
-        <input
-          type="text"
-          name="descrizione"
-          placeholder="Descrizione prodotto"
-          required
-        />
-        <input
-          type="number"
-          name="prezzo"
-          placeholder="Prezzo prodotto"
-          required
-        />
-        <input
-          type="number"
-          name="disponibilita"
-          placeholder="Disponibilità prodotto"
-          required
-        />
-        <button type="submit">Aggiungi Prodotto</button>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestione Magazzino</h1>
+        <button
+          onClick={logout}
+          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          Logout
+        </button>
+      </div>
+
+      <form onSubmit={handleAggiungiProdotto} className="space-y-4">
+        <input type="text" name="nome" placeholder="Nome prodotto" required className="border p-2 w-full" />
+        <input type="text" name="descrizione" placeholder="Descrizione prodotto" required className="border p-2 w-full" />
+        <input type="number" name="prezzo" placeholder="Prezzo prodotto" required className="border p-2 w-full" />
+        <input type="number" name="disponibilita" placeholder="Disponibilità prodotto" required className="border p-2 w-full" />
+        <button
+          type="submit"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Aggiungi Prodotto
+        </button>
       </form>
 
-      <div>
-        <ul>
+      <div className="mt-8">
+        <ul className="space-y-4">
           {prodotti.map((prodotto, index) => (
-            <li key={index}>
-              <p>{prodotto.nome}</p>
-              <p>{prodotto.descrizione}</p>
-              <p>€{prodotto.prezzo}</p>
-              <p>{prodotto.disponibilita}</p>
+            <li key={index} className="border p-4 rounded">
+              <p><strong>Nome:</strong> {prodotto.nome}</p>
+              <p><strong>Descrizione:</strong> {prodotto.descrizione}</p>
+              <p><strong>Prezzo:</strong> €{prodotto.prezzo.toFixed(2)}</p>
+              <p><strong>Disponibilità:</strong> {prodotto.disponibilita}</p>
             </li>
           ))}
         </ul>

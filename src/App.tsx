@@ -1,9 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { BrowserRouter } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient";
-import Vetrina from "./pages/Vetrina";
-import Magazzino from "./pages/Magazzino";
-import Login from "./pages/Login";
+import AppRoutes from "./AppRoutes";
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -11,22 +9,18 @@ function App() {
 
   useEffect(() => {
     const getSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        setUser(data.session.user);
-        getUserRole(data.session.user.id);
-      } else {
-        setUser(null);
-        setRole(null);
-      }
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        getUserRole(session.user.id);
+        fetchUserRole(session.user.id);
+      }
+    };
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchUserRole(session.user.id);
       } else {
         setUser(null);
         setRole(null);
@@ -34,50 +28,33 @@ function App() {
     });
 
     return () => {
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
-  // Funzione per recuperare il ruolo dell'utente
-  const getUserRole = async (userId: string) => {
+  const fetchUserRole = async (userId: string) => {
     const { data, error } = await supabase
-      .from('utenti')
-      .select('ruolo')
-      .eq('id', userId)
+      .from("utenti")
+      .select("ruolo")
+      .eq("id", userId)
       .single();
 
-    if (error) {
-      console.error("Errore nel recuperare il ruolo:", error);
-      setRole(null);
+    if (data) {
+      setRole(data.ruolo);
     } else {
-      setRole(data?.ruolo ?? null);
+      console.error("Errore nel recuperare il ruolo:", error?.message);
     }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
   };
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Pagina principale Vetrina */}
-        <Route path="/" element={<Vetrina />} />
-
-        {/* Pagina Login */}
-        <Route path="/login" element={<Login />} />
-
-        {/* Rotta protetta per il Cliente */}
-        <Route
-          path="/vetrina"
-          element={user ? <Vetrina /> : <Navigate to="/login" />}
-        />
-
-        {/* Rotta protetta per il Gestore */}
-        <Route
-          path="/magazzino"
-          element={user && role === "gestore" ? <Magazzino /> : <Navigate to="/login" />}
-        />
-
-        {/* Qualsiasi altra rotta porta alla login */}
-        <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
+      <AppRoutes user={user} role={role} logout={logout} />
     </BrowserRouter>
   );
 }

@@ -1,51 +1,63 @@
-import { supabase } from "./supabaseClient";
+import { supabase } from './supabaseClient'; // Importa il client di Supabase
 
-// Funzione per gestire il login e registrazione automatica
-export const loginOrRegister = async (email: string, password: string) => {
+// Funzione per registrare un utente
+export const register = async (username: string, email: string, password: string) => {
   try {
-    // Effettua il login
-    const { data: session, error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // Creiamo un nuovo utente con email e password
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
     });
 
-    if (loginError) {
-      console.error("Errore nel login:", loginError);
-      return;
+    if (error) {
+      console.error("Errore nella registrazione:", error.message);
+      return null; // In caso di errore, ritorniamo null
     }
 
-    // Verifica se l'utente esiste già nel database
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('utenti')
-      .select('id, ruolo')
-      .eq('email', email)
-      .single();
+    // Aggiungiamo lo username al profilo dell'utente
+    const { error: updateError } = await supabase
+      .from('utenti') // Assumendo che tu abbia una tabella utenti
+      .update({ username: username })
+      .eq('email', email);
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error("Errore nel recuperare l'utente:", fetchError);
-      return;
+    if (updateError) {
+      console.error("Errore nell'aggiornare il profilo:", updateError.message);
+      return null;
     }
 
-    // Se l'utente non esiste, lo creiamo con il ruolo di 'cliente'
-    if (!existingUser) {
-      const { data: newUser, error: insertError } = await supabase
-        .from('utenti')
-        .insert([{ email, ruolo: 'cliente' }]);
-
-      if (insertError) {
-        console.error("Errore nel creare il nuovo utente:", insertError);
-        return;
-      }
-
-      console.log("Nuovo utente creato:", newUser);
-    } else {
-      console.log("Utente esistente, ruolo:", existingUser.ruolo);
-    }
-
-    // Ora, continua con la logica di login o altre azioni
-    return session;
-
+    console.log("Utente registrato con successo", data);
+    return data;
   } catch (error) {
-    console.error("Errore durante il login o la registrazione:", error);
+    console.error("Errore nella registrazione:", error);
+    return null;
+  }
+};
+
+// Funzione per effettuare il login
+export const login = async (email: string, password: string) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if (error) {
+      console.error("Errore login:", error.message);
+      if (error.message === "Invalid login credentials") {
+        alert("Le credenziali non sono valide o l'email non è confermata. Controlla la tua casella email per confermare.");
+      }
+      return null;
+    }
+
+    if (data && !data.user?.email_confirmed_at) {
+      // L'email non è confermata
+      alert("L'email non è confermata. Controlla la tua casella email per confermare.");
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Errore nel login:", error);
+    return null;
   }
 };

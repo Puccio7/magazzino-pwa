@@ -1,24 +1,65 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { Link } from "react-router-dom";
+import  supabase  from "../lib/supabaseClient";
+import { Link, useNavigate } from "react-router-dom";  // Usa useNavigate al posto di useHistory
 import logo from "../assets/logo.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [alert, setAlert] = useState<{ type: 'error' | 'warning' | 'success'; message: string } | null>(null);
+  const navigate = useNavigate();  // Inizializza useNavigate per la navigazione
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { user, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
       console.error("Errore nel login:", error);
-    } else {
-      console.log("Utente loggato:", user);
+      setAlert({
+        type: 'error',
+        message: "Errore di accesso. Verifica email e password."
+      });
+      return;
     }
+
+    console.log("Login riuscito:", data.user);
+    setAlert(null);
+
+    const userId = data.user?.id;
+    const userEmail = data.user?.email;
+
+    if (!userId || !userEmail) {
+      console.error("Dati utente mancanti");
+      return;
+    }
+
+    // Prova subito ad inserire l'utente nella tabella
+    const { error: insertError } = await supabase.from("utentiNew").insert([  // Assicurati che la tabella si chiami "utentiNew"
+      {
+        auth_id: userId,    // testo copia dell'UUID
+        email: userEmail,
+        nome: userEmail,
+        ruolo: 'cliente',
+      },
+    ]);
+
+    if (insertError) {
+      if (insertError.code === '23505') { 
+        // 23505 è il codice di errore 'unique violation' di Postgres
+        console.warn("Utente già presente, nessun problema.");
+      } else {
+        console.error("Errore nell'inserimento nella tabella utenti:", insertError.message);
+      }
+    } else {
+      console.log("Utente inserito correttamente nella tabella utenti!");
+    }
+
+    // Dopo il login e l'inserimento, reindirizza alla pagina desiderata (per esempio la home)
+    navigate("/vetrina"); // Reindirizzamento a vetrina (o qualsiasi altra pagina tu preferisca)
   };
 
   return (
-    // Questi stili sovrascrivono completamente il layout di App.css
     <div style={{
       position: 'absolute',
       top: 0,
@@ -58,9 +99,53 @@ const Login = () => {
             }}
           />
         </div>
-        
-        <form onSubmit={handleSubmit} style={{marginBottom: '1.5rem'}}>
-          <div style={{marginBottom: '1rem'}}>
+
+        {/* Alert/Pop-up notification */}
+        {alert && (
+          <div 
+            style={{
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              borderRadius: '0.25rem',
+              backgroundColor: alert.type === 'error' ? '#fee2e2' : 
+                              alert.type === 'warning' ? '#fff7ed' : '#ecfdf5',
+              color: alert.type === 'error' ? '#b91c1c' : 
+                      alert.type === 'warning' ? '#9a3412' : '#065f46',
+              border: `1px solid ${alert.type === 'error' ? '#fecaca' : 
+                                  alert.type === 'warning' ? '#fed7aa' : '#a7f3d0'}`,
+              display: 'flex',
+              alignItems: 'flex-start',
+              position: 'relative'
+            }}
+          >
+            {/* Close button */}
+            <button 
+              onClick={() => setAlert(null)}
+              style={{
+                position: 'absolute',
+                top: '0.5rem',
+                right: '0.5rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.25rem',
+                color: 'inherit'
+              }}
+            >
+              &times;
+            </button>
+            
+            {/* Alert content */}
+            <div style={{ marginRight: '1.5rem' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                {alert.message}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label 
               htmlFor="email" 
               style={{
@@ -91,8 +176,8 @@ const Login = () => {
               required
             />
           </div>
-          
-          <div style={{marginBottom: '1rem'}}>
+
+          <div style={{ marginBottom: '1rem' }}>
             <label 
               htmlFor="password" 
               style={{
@@ -123,7 +208,7 @@ const Login = () => {
               required
             />
           </div>
-          
+
           <div style={{
             textAlign: 'right',
             marginBottom: '1rem'
@@ -136,7 +221,7 @@ const Login = () => {
               Password dimenticata?
             </span>
           </div>
-          
+
           <button
             type="submit"
             style={{
@@ -155,7 +240,7 @@ const Login = () => {
             Accedi
           </button>
         </form>
-        
+
         <div style={{
           textAlign: 'center',
           marginTop: '1rem'
@@ -164,7 +249,7 @@ const Login = () => {
             fontSize: '0.875rem',
             color: '#6b7280'
           }}>
-            Non hai un account? <Link to="/register" style={{color: '#3b82f6', fontWeight: '500'}}>Registrati</Link>
+            Non hai un account? <Link to="/register" style={{ color: '#3b82f6', fontWeight: '500' }}>Registrati</Link>
           </p>
         </div>
       </div>
